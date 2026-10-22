@@ -51,7 +51,7 @@ def run_agent():
     """
     
     response = None
-    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    for model_name in ["gemini-2.5-flash"]:
         try:
             print(f"Пробуем модель {model_name}...")
             response = client.models.generate_content(
