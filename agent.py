@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from google import genai
 
@@ -7,6 +8,8 @@ TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 TG_CHANNEL_ID = os.environ.get("TG_CHANNEL_ID", "-1004329382085")
 
 PROMO_CODE = "Soleilqqe"
+MODEL = "gemini-3.8-flash"
+
 
 def get_uzbek_market_news():
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -25,20 +28,38 @@ def get_uzbek_market_news():
                 return "\n".join(news_list)
     except Exception as e:
         print(f"Лог парсера: {e}")
-    
+
     return "Инфоповод дня: разбор главных дивидендных акций РФБ Тошкент (Узтелеком, АГМК, Узбекинвест) и стратегия регулярных покупок."
 
+
+def generate_text(client, prompt, attempts=4):
+    for i in range(1, attempts + 1):
+        try:
+            response = client.models.generate_content(model=MODEL, contents=prompt)
+            if response and response.text:
+                return response.text
+            print(f"Попытка {i}: пустой ответ")
+        except Exception as e:
+            print(f"Попытка {i}: ошибка Gemini: {e}")
+        if i < attempts:
+            time.sleep(10 * i)
+    raise Exception("Gemini не ответил после нескольких попыток.")
+
+
 def run_agent():
+    if not GEMINI_API_KEY or not TG_BOT_TOKEN:
+        raise Exception("Не заданы секреты GEMINI_API_KEY или TG_BOT_TOKEN в GitHub Secrets.")
+
     print("1. Скаут проверяет openinfo.uz...")
     raw_news = get_uzbek_market_news()
-    
+
     print("2. Аналитик Gemini пишет посты...")
     client = genai.Client(api_key=GEMINI_API_KEY)
-    
+
     prompt = f"""
     Ты четкий финансовый аналитик фондового рынка Узбекистана (РФБ Тошкент) с хорошим чувством юмора и легкой самоиронией.
     На основе этих данных напиши ДВА готовых поста:
-    
+
     1) Пост для Telegram-канала (структурно, по фактам, с легким юмором про узбекский рынок).
     2) Короткий дерзкий вброс для Threads (до 350 символов), чтобы забайтить людей на комментарии.
 
@@ -49,23 +70,20 @@ def run_agent():
     Данные для анализа:
     {raw_news}
     """
-    
-    # Автоматический выбор дефолтной актуальной модели без кастомных названий
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-    )
-    
-    if not response or not response.text:
-        raise Exception("Не удалось сгенерировать текст через Gemini.")
-    
+
+    text = generate_text(client, prompt)
+
     print("3. Публикатор отправляет пост в закрытый ТГ-канал...")
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
     res = requests.post(url, json={
         "chat_id": TG_CHANNEL_ID,
-        "text": response.text
-    })
+        "text": text[:4096],
+    }, timeout=30)
     print("Ответ Телеграма:", res.json())
+
+    if not res.ok:
+        raise Exception(f"Telegram вернул ошибку: {res.text}")
+
 
 if __name__ == "__main__":
     run_agent()
