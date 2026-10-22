@@ -2,8 +2,15 @@ name: Run UzStock Agent
 
 on:
   schedule:
-    - cron: '0 6,14 * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uzstock-agent
+  cancel-in-progress: false
 
 jobs:
   run-agent:
@@ -15,16 +22,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install google-genai requests
+        run: pip install requests google-genai
 
-      - name: Run agent script
+      - name: Run agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID }}
+        run: python agent.py
+
+      - name: Save seen list
         run: |
-          python agent.py
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add seen.json
+          git diff --cached --quiet || (git commit -m "update seen" && git push)
