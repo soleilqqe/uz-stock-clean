@@ -52,7 +52,7 @@ def run_agent():
     
     # Автоматический выбор дефолтной актуальной модели без кастомных названий
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         contents=prompt,
     )
     
