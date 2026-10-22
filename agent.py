@@ -51,7 +51,7 @@ def run_agent():
     """
     
     response = None
-    for model_name in ["gemini-2.5-flash"]:
+    for model_name in ["gemini-3.8-flash"]:
         try:
             print(f"Пробуем модель {model_name}...")
             response = client.models.generate_content(
@@ -61,10 +61,10 @@ def run_agent():
             if response and response.text:
                 break
         except Exception as e:
-            print(f"Модель {model_name} ответила ошибкой: {e}, пробуем следующую...")
+            print(f"Модель {model_name} ответила ошибкой: {e}")
 
     if not response or not response.text:
-        raise Exception("Все модели Gemini сейчас перегружены, попробуй запустить чуть позже.")
+        raise Exception("Не удалось сгенерировать пост через модель Gemini.")
     
     print("3. Публикатор отправляет пост в закрытый ТГ-канал...")
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
